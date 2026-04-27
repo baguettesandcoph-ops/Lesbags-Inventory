@@ -152,6 +152,7 @@ hr{border:none;border-top:1px solid #e8e6e0;margin:1.25rem 0}
 <script>
 var products={},scanLog=[],scanMode='pick',cameraActive=false,lastScanned='',lastScannedTime=0;
 
+function beep(){try{var a=new(window.AudioContext||window.webkitAudioContext)();var o=a.createOscillator();var g=a.createGain();o.connect(g);g.connect(a.destination);o.frequency.value=1800;o.type='sine';g.gain.setValueAtTime(0.3,a.currentTime);g.gain.exponentialRampToValueAtTime(0.001,a.currentTime+0.12);o.start(a.currentTime);o.stop(a.currentTime+0.12);}catch(e){}}
 function save(){
   try{
     localStorage.setItem('inv_products',JSON.stringify(products));
@@ -245,11 +246,11 @@ function processScan(raw){
   if(p.status==='sold'){setResult(p.name+' — already sold','warn');return;}
   if(scanMode==='pick'){
     p.status='picked';
-    setResult(p.name+' — picked','ok');
+    setResult(p.name+' — picked','ok');beep();
     scanLog.unshift({time:timeStr,sku:sku,name:p.name,action:'pick'});
   } else {
     p.status='sold';
-    setResult(p.name+' — sold!','warn');
+    setResult(p.name+' — sold!','warn');beep();
     scanLog.unshift({time:timeStr,sku:sku,name:p.name,action:'sell'});
   }
   updateStats();
