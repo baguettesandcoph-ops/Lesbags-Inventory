@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Inventory Scanner</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f5f5f0;color:#1a1a1a;min-height:100vh}
+.app{max-width:480px;margin:0 auto;padding:0 0 2rem}
+.header{padding:1rem 1rem 0.5rem;font-size:16px;font-weight:600;display:flex;align-items:center;justify-content:space-between}
+.header-sub{font-size:11px;color:#888;font-weight:400}
+.tabs{display:flex;padding:0 1rem;border-bottom:1px solid #e0ddd6}
+.tab{flex:1;padding:10px 0;font-size:13px;font-weight:500;text-align:center;cursor:pointer;color:#888;border-bottom:2px solid transparent;background:none;border-top:none;border-left:none;border-right:none}
+.tab.active{color:#1a1a1a;border-bottom-color:#1a1a1a}
+.section{display:none;padding:1rem}.section.active{display:block}
+h3{font-size:14px;font-weight:600;margin-bottom:10px}
+textarea{width:100%;height:120px;font-size:12px;padding:8px;border:1px solid #ddd;border-radius:8px;font-family:monospace;resize:vertical;color:#1a1a1a;background:#fff}
+button{padding:9px 16px;border:1px solid #ddd;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;background:#fff;color:#1a1a1a;-webkit-tap-highlight-color:transparent}
+button:active{opacity:.7}
+button.primary{background:#1a1a1a;color:#fff;border-color:#1a1a1a}
+button.danger{color:#a32d2d}
+.row{display:flex;gap:8px;margin-bottom:10px;align-items:center}
+input[type=text]{flex:1;padding:9px 12px;border:1px solid #ddd;border-radius:8px;font-size:14px;color:#1a1a1a;background:#fff;-webkit-appearance:none}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:1.25rem}
+.stat{background:#fff;border-radius:10px;padding:.875rem;text-align:center;border:1px solid #e8e6e0}
+.stat-num{font-size:22px;font-weight:600}
+.stat-label{font-size:11px;color:#888;margin-top:2px}
+.badge{font-size:11px;padding:2px 8px;border-radius:20px;font-weight:500;white-space:nowrap}
+.badge.in-stock{background:#eaf3de;color:#3b6d11}
+.badge.picked{background:#faeeda;color:#854f0b}
+.badge.sold{background:#eeedfe;color:#3c3489}
+.product-item{display:flex;align-items:center;gap:8px;padding:10px 12px;border:1px solid #e8e6e0;border-radius:10px;margin-bottom:6px;background:#fff}
+.product-item.sold{opacity:.4}
+.sku{font-family:monospace;font-size:11px;color:#888;min-width:60px}
+.name{flex:1;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.log-item{display:flex;gap:8px;padding:8px 0;border-bottom:1px solid #f0ede8;align-items:flex-start}
+.log-item:last-child{border-bottom:none}
+.log-time{font-size:11px;color:#888;min-width:46px;padding-top:1px}
+.log-text{font-size:13px;flex:1}
+.log-action{font-size:11px;font-weight:500;padding:2px 8px;border-radius:20px;white-space:nowrap}
+.log-action.pick{background:#faeeda;color:#854f0b}
+.log-action.sell{background:#eeedfe;color:#3c3489}
+.log-action.notfound{background:#fcebeb;color:#a32d2d}
+.mode-btns{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:1rem}
+.mode-btn{padding:10px;border:1px solid #ddd;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;background:#fff;color:#888;text-align:center}
+.mode-btn.active{background:#1a1a1a;color:#fff;border-color:#1a1a1a}
+.empty{text-align:center;padding:2rem;color:#888;font-size:13px}
+.hint{font-size:12px;color:#888;margin-bottom:8px;line-height:1.5}
+#scanner-container{position:relative;width:100%;border-radius:12px;overflow:hidden;background:#111;margin-bottom:10px;display:none;min-height:220px}
+#scanner-container video{width:100%;display:block}
+#scanner-container canvas.drawingBuffer{display:none}
+.scan-frame{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:75%;height:40%;pointer-events:none;border:1px solid rgba(255,255,255,0.4);border-radius:8px}
+.corner{position:absolute;width:16px;height:16px;border-color:#fff;border-style:solid}
+.corner.tl{top:-1px;left:-1px;border-width:3px 0 0 3px;border-radius:3px 0 0 0}
+.corner.tr{top:-1px;right:-1px;border-width:3px 3px 0 0;border-radius:0 3px 0 0}
+.corner.bl{bottom:-1px;left:-1px;border-width:0 0 3px 3px;border-radius:0 0 0 3px}
+.corner.br{bottom:-1px;right:-1px;border-width:0 3px 3px 0;border-radius:0 0 3px 0}
+.scan-line{position:absolute;left:3%;right:3%;height:2px;background:rgba(255,50,50,0.9);animation:sweep 2s ease-in-out infinite}
+@keyframes sweep{0%,100%{top:8%}50%{top:86%}}
+.result-box{padding:12px 14px;border-radius:10px;font-size:14px;font-weight:500;text-align:center;margin-bottom:10px;border:1px solid #e8e6e0;background:#f9f8f5;color:#888;min-height:46px;display:flex;align-items:center;justify-content:center}
+.result-box.ok{background:#eaf3de;border-color:#9FE1CB;color:#3b6d11}
+.result-box.err{background:#fcebeb;border-color:#f7c1c1;color:#a32d2d}
+.result-box.warn{background:#eeedfe;border-color:#cecbf6;color:#3c3489}
+#cam-btn{width:100%;padding:13px;font-size:14px;font-weight:600}
+.manual-row{display:flex;gap:8px;margin-top:10px}
+hr{border:none;border-top:1px solid #e8e6e0;margin:1.25rem 0}
+.save-dot{width:7px;height:7px;border-radius:50%;background:#3b6d11;display:inline-block;margin-left:6px;vertical-align:middle}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="header">
+    <span>Inventory Scanner</span>
+    <span class="header-sub" id="save-status"></span>
+  </div>
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('scan')">Scan</button>
+    <button class="tab" onclick="switchTab('setup')">Setup</button>
+    <button class="tab" onclick="switchTab('inventory')">Inventory</button>
+    <button class="tab" onclick="switchTab('log')">Log</button>
+  </div>
+
+  <div id="scan" class="section active">
+    <div class="mode-btns">
+      <div class="mode-btn active" id="mode-pick" onclick="setMode('pick')">Pick / Pack</div>
+      <div class="mode-btn" id="mode-sell" onclick="setMode('sell')">Sell</div>
+    </div>
+    <div id="scanner-container">
+      <div class="scan-frame">
+        <div class="scan-line"></div>
+        <div class="corner tl"></div><div class="corner tr"></div>
+        <div class="corner bl"></div><div class="corner br"></div>
+      </div>
+    </div>
+    <div id="result-box" class="result-box">Ready to scan</div>
+    <button id="cam-btn" class="primary" onclick="toggleCamera()">Start camera scanner</button>
+    <div class="manual-row">
+      <input type="text" id="scan-input" placeholder="Or type barcode manually..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" onkeydown="if(event.key==='Enter')processManual()">
+      <button onclick="processManual()">Go</button>
+    </div>
+    <div class="stats" style="margin-top:1.25rem">
+      <div class="stat"><div class="stat-num" id="s-instock">0</div><div class="stat-label">in stock</div></div>
+      <div class="stat"><div class="stat-num" id="s-picked">0</div><div class="stat-label">picked</div></div>
+      <div class="stat"><div class="stat-num" id="s-sold">0</div><div class="stat-label">sold</div></div>
+    </div>
+  </div>
+
+  <div id="setup" class="section">
+    <h3>Import products</h3>
+    <p class="hint">Paste as: 3001, Product name — one per line. Numbers must match your printed barcodes exactly.</p>
+    <textarea id="csv-input" placeholder="3001, Blue canvas tote
+3002, Leather crossbody
+3003, Woven straw hat"></textarea>
+    <div class="row" style="margin-top:8px">
+      <button class="primary" onclick="importProducts()">Import</button>
+      <button onclick="loadSample()">Load sample</button>
+      <button class="danger" onclick="clearAll()" style="margin-left:auto">Clear all</button>
+    </div>
+    <div id="import-status" style="font-size:13px;color:#888;margin-top:8px"></div>
+    <hr>
+    <h3>Add single product</h3>
+    <div class="row">
+      <input type="text" id="new-sku" placeholder="3001" style="max-width:90px;flex:none">
+      <input type="text" id="new-name" placeholder="Product name">
+      <button onclick="addProduct()">Add</button>
+    </div>
+    <hr>
+    <h3>Reset statuses</h3>
+    <p class="hint">Keeps all products but sets everything back to in-stock. Use at the start of a new day.</p>
+    <button onclick="resetStatuses()">Reset all to in-stock</button>
+  </div>
+
+  <div id="inventory" class="section">
+    <div class="row" style="margin-bottom:.75rem">
+      <input type="text" id="inv-search" placeholder="Search..." oninput="renderInventory()">
+      <button onclick="exportCSV()">Export CSV</button>
+    </div>
+    <div id="product-list"><div class="empty">No products yet</div></div>
+  </div>
+
+  <div id="log" class="section">
+    <div class="row" style="margin-bottom:.75rem;justify-content:space-between">
+      <h3 style="margin:0">Scan log</h3>
+      <button class="danger" onclick="clearLog()">Clear</button>
+    </div>
+    <div id="log-list"><div class="empty">No scans yet</div></div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/quagga@0.12.1/dist/quagga.min.js"></script>
+<script>
+var products={},scanLog=[],scanMode='pick',cameraActive=false,lastScanned='',lastScannedTime=0;
+
+function save(){
+  try{
+    localStorage.setItem('inv_products',JSON.stringify(products));
+    localStorage.setItem('inv_log',JSON.stringify(scanLog));
+    document.getElementById('save-status').textContent='Saved';
+    setTimeout(function(){document.getElementById('save-status').textContent='';},1500);
+  }catch(e){}
+}
+
+function load(){
+  try{
+    var p=localStorage.getItem('inv_products');
+    var l=localStorage.getItem('inv_log');
+    if(p)products=JSON.parse(p);
+    if(l)scanLog=JSON.parse(l);
+  }catch(e){}
+  updateStats();
+}
+
+function switchTab(t){
+  ['scan','setup','inventory','log'].forEach(function(id,i){
+    document.querySelectorAll('.tab')[i].classList.toggle('active',id===t);
+    document.getElementById(id).classList.toggle('active',id===t);
+  });
+  if(t==='inventory')renderInventory();
+  if(t==='log')renderLog();
+}
+
+function setMode(m){
+  scanMode=m;
+  document.getElementById('mode-pick').classList.toggle('active',m==='pick');
+  document.getElementById('mode-sell').classList.toggle('active',m==='sell');
+}
+
+function toggleCamera(){if(cameraActive){stopCamera();}else{startCamera();}}
+
+function startCamera(){
+  var container=document.getElementById('scanner-container');
+  container.style.display='block';
+  setResult('Starting camera...','');
+  Quagga.init({
+    inputStream:{name:'Live',type:'LiveStream',target:container,constraints:{facingMode:'environment',width:{min:640,ideal:1280},height:{min:480,ideal:720}},area:{top:'20%',right:'5%',left:'5%',bottom:'20%'}},
+    decoder:{readers:['code_128_reader','ean_reader','ean_8_reader','code_39_reader','upc_reader'],multiple:false},
+    locate:true,numOfWorkers:0,frequency:10
+  },function(err){
+    if(err){container.style.display='none';setResult('Camera error — check browser permissions','err');return;}
+    Quagga.start();
+    cameraActive=true;
+    var btn=document.getElementById('cam-btn');
+    btn.textContent='Stop camera';
+    btn.classList.remove('primary');
+    setResult('Point camera at barcode','');
+  });
+  Quagga.onDetected(function(result){
+    if(!result||!result.codeResult||!result.codeResult.code)return;
+    var code=result.codeResult.code;
+    var now=Date.now();
+    if(code===lastScanned&&(now-lastScannedTime)<2500)return;
+    lastScanned=code;lastScannedTime=now;
+    processScan(code.trim());
+  });
+}
+
+function stopCamera(){
+  Quagga.stop();
+  cameraActive=false;
+  document.getElementById('scanner-container').style.display='none';
+  var btn=document.getElementById('cam-btn');
+  btn.textContent='Start camera scanner';
+  btn.classList.add('primary');
+  setResult('Ready to scan','');
+}
+
+function processManual(){
+  var val=document.getElementById('scan-input').value.trim();
+  if(!val)return;
+  document.getElementById('scan-input').value='';
+  processScan(val);
+}
+
+function processScan(raw){
+  var sku=raw.trim();
+  var now=new Date();
+  var timeStr=now.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+  if(!products[sku]){
+    setResult('"'+sku+'" not in inventory','err');
+    scanLog.unshift({time:timeStr,sku:sku,name:'Unknown',action:'notfound'});
+    save();return;
+  }
+  var p=products[sku];
+  if(p.status==='sold'){setResult(p.name+' — already sold','warn');return;}
+  if(scanMode==='pick'){
+    p.status='picked';
+    setResult(p.name+' — picked','ok');
+    scanLog.unshift({time:timeStr,sku:sku,name:p.name,action:'pick'});
+  } else {
+    p.status='sold';
+    setResult(p.name+' — sold!','warn');
+    scanLog.unshift({time:timeStr,sku:sku,name:p.name,action:'sell'});
+  }
+  updateStats();
+  save();
+}
+
+function setResult(msg,type){
+  var el=document.getElementById('result-box');
+  el.textContent=msg;
+  el.className='result-box'+(type?' '+type:'');
+}
+
+function updateStats(){
+  var v={'in-stock':0,picked:0,sold:0};
+  Object.values(products).forEach(function(p){v[p.status]=(v[p.status]||0)+1;});
+  document.getElementById('s-instock').textContent=v['in-stock']||0;
+  document.getElementById('s-picked').textContent=v.picked||0;
+  document.getElementById('s-sold').textContent=v.sold||0;
+}
+
+function importProducts(){
+  var lines=document.getElementById('csv-input').value.trim().split('\n');
+  var count=0;
+  lines.forEach(function(l){
+    var parts=l.split(',');
+    if(parts.length>=2){
+      var sku=parts[0].trim();
+      var name=parts.slice(1).join(',').trim();
+      if(sku&&name){products[sku]={name:name,status:'in-stock'};count++;}
+    }
+  });
+  document.getElementById('import-status').textContent=count+' product'+(count!==1?'s':'')+' imported and saved.';
+  updateStats();save();
+}
+
+function loadSample(){
+  document.getElementById('csv-input').value='3001, Blue canvas tote\n3002, Leather crossbody\n3003, Woven straw hat\n3004, Silk scarf\n3005, Beaded bracelet';
+  importProducts();
+}
+
+function addProduct(){
+  var sku=document.getElementById('new-sku').value.trim();
+  var name=document.getElementById('new-name').value.trim();
+  if(!sku||!name)return;
+  products[sku]={name:name,status:'in-stock'};
+  document.getElementById('new-sku').value='';
+  document.getElementById('new-name').value='';
+  updateStats();save();
+  document.getElementById('import-status').textContent='Added '+sku+'.';
+}
+
+function clearAll(){
+  if(!confirm('Clear all products and log?'))return;
+  products={};scanLog=[];updateStats();save();
+  document.getElementById('import-status').textContent='Cleared.';
+}
+
+function resetStatuses(){
+  if(!confirm('Reset all products to in-stock?'))return;
+  Object.keys(products).forEach(function(k){products[k].status='in-stock';});
+  updateStats();save();
+  document.getElementById('import-status').textContent='All reset to in-stock.';
+}
+
+function renderInventory(){
+  var q=(document.getElementById('inv-search').value||'').toLowerCase();
+  var list=document.getElementById('product-list');
+  var entries=Object.entries(products).filter(function(e){return!q||e[0].toLowerCase().includes(q)||e[1].name.toLowerCase().includes(q);});
+  if(!entries.length){list.innerHTML='<div class="empty">No products yet</div>';return;}
+  list.innerHTML=entries.map(function(e){
+    var sku=e[0],p=e[1];
+    return'<div class="product-item '+(p.status==='sold'?'sold':'')+'"><span class="sku">'+sku+'</span><span class="name">'+p.name+'</span><span class="badge '+(p.status==='in-stock'?'in-stock':p.status)+'">'+p.status+'</span><button onclick="resetItem(\''+sku+'\')" style="font-size:11px;padding:3px 8px">reset</button></div>';
+  }).join('');
+}
+
+function resetItem(sku){if(products[sku]){products[sku].status='in-stock';save();}renderInventory();updateStats();}
+
+function renderLog(){
+  var el=document.getElementById('log-list');
+  if(!scanLog.length){el.innerHTML='<div class="empty">No scans yet</div>';return;}
+  el.innerHTML=scanLog.map(function(l){
+    return'<div class="log-item"><span class="log-time">'+l.time+'</span><span class="log-text"><strong>'+l.sku+'</strong> — '+l.name+'</span><span class="log-action '+l.action+'">'+(l.action==='pick'?'picked':l.action==='sell'?'sold':'not found')+'</span></div>';
+  }).join('');
+}
+
+function clearLog(){scanLog=[];save();renderLog();}
+
+function exportCSV(){
+  var rows=[['SKU','Name','Status']].concat(Object.entries(products).map(function(e){return[e[0],e[1].name,e[1].status];}));
+  var a=document.createElement('a');
+  a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(rows.map(function(r){return r.join(',');}).join('\n'));
+  a.download='inventory.csv';
+  document.body.appendChild(a);a.click();document.body.removeChild(a);
+}
+
+load();
+</script>
+</body>
+</html>
