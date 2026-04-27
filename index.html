@@ -152,7 +152,10 @@ hr{border:none;border-top:1px solid #e8e6e0;margin:1.25rem 0}
 <script>
 var products={},scanLog=[],scanMode='pick',cameraActive=false,lastScanned='',lastScannedTime=0;
 
-function beep(){try{var a=new(window.AudioContext||window.webkitAudioContext)();var o=a.createOscillator();var g=a.createGain();o.connect(g);g.connect(a.destination);o.frequency.value=1800;o.type='sine';g.gain.setValueAtTime(0.3,a.currentTime);g.gain.exponentialRampToValueAtTime(0.001,a.currentTime+0.12);o.start(a.currentTime);o.stop(a.currentTime+0.12);}catch(e){}}
+var audioCtx=null;
+function unlockAudio(){if(audioCtx)return;try{audioCtx=new(window.AudioContext||window.webkitAudioContext)();var b=audioCtx.createBuffer(1,1,22050);var s=audioCtx.createBufferSource();s.buffer=b;s.connect(audioCtx.destination);s.start(0);}catch(e){}}
+function beep(){try{if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)();if(audioCtx.state==='suspended')audioCtx.resume().then(function(){doBeep();});else doBeep();}catch(e){}}
+function doBeep(){try{var o=audioCtx.createOscillator();var g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);o.frequency.value=1800;o.type='sine';g.gain.setValueAtTime(0.3,audioCtx.currentTime);g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.12);o.start(audioCtx.currentTime);o.stop(audioCtx.currentTime+0.12);}catch(e){}}
 function save(){
   try{
     localStorage.setItem('inv_products',JSON.stringify(products));
@@ -187,7 +190,7 @@ function setMode(m){
   document.getElementById('mode-sell').classList.toggle('active',m==='sell');
 }
 
-function toggleCamera(){if(cameraActive){stopCamera();}else{startCamera();}}
+function toggleCamera(){unlockAudio();if(cameraActive){stopCamera();}else{startCamera();}}
 
 function startCamera(){
   var container=document.getElementById('scanner-container');
@@ -227,6 +230,7 @@ function stopCamera(){
 }
 
 function processManual(){
+  unlockAudio();
   var val=document.getElementById('scan-input').value.trim();
   if(!val)return;
   document.getElementById('scan-input').value='';
