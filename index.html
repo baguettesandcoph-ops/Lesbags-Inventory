@@ -28,7 +28,7 @@ input[type=text]{flex:1;padding:9px 12px;border:1px solid #ddd;border-radius:8px
 .stat-label{font-size:11px;color:#888;margin-top:2px}
 .badge{font-size:11px;padding:2px 8px;border-radius:20px;font-weight:500;white-space:nowrap}
 .badge.in-stock{background:#eaf3de;color:#3b6d11}
-.badge.picked{background:#faeeda;color:#854f0b}
+.badge.packed{background:#faeeda;color:#854f0b}
 .badge.sold{background:#eeedfe;color:#3c3489}
 .product-item{display:flex;align-items:center;gap:8px;padding:10px 12px;border:1px solid #e8e6e0;border-radius:10px;margin-bottom:6px;background:#fff}
 .product-item.sold{opacity:.4}
@@ -101,7 +101,7 @@ hr{border:none;border-top:1px solid #e8e6e0;margin:1.25rem 0}
     </div>
     <div class="stats" style="margin-top:1.25rem">
       <div class="stat"><div class="stat-num" id="s-instock">0</div><div class="stat-label">in stock</div></div>
-      <div class="stat"><div class="stat-num" id="s-picked">0</div><div class="stat-label">picked</div></div>
+      <div class="stat"><div class="stat-num" id="s-packed">0</div><div class="stat-label">picked</div></div>
       <div class="stat"><div class="stat-num" id="s-sold">0</div><div class="stat-label">sold</div></div>
     </div>
   </div>
@@ -247,14 +247,15 @@ function processScan(raw){
     save();return;
   }
   var p=products[sku];
-  if(p.status==='sold'){setResult(p.name+' — already sold','warn');return;}
   if(scanMode==='pick'){
-    p.status='picked';
-    setResult(p.name+' — picked','ok');beep();
+    if(p.status==='packed'){setResult(p.name+' — already packed','warn');return;}
+    p.status='packed';
+    setResult(p.name+' — packed and ready','ok');beep();
     scanLog.unshift({time:timeStr,sku:sku,name:p.name,action:'pick'});
   } else {
+    if(p.status==='packed'){setResult(p.name+' — already packed','warn');return;}
     p.status='sold';
-    setResult(p.name+' — sold!','warn');beep();
+    setResult(p.name+' — sold!','ok');beep();
     scanLog.unshift({time:timeStr,sku:sku,name:p.name,action:'sell'});
   }
   updateStats();
@@ -271,7 +272,7 @@ function updateStats(){
   var v={'in-stock':0,picked:0,sold:0};
   Object.values(products).forEach(function(p){v[p.status]=(v[p.status]||0)+1;});
   document.getElementById('s-instock').textContent=v['in-stock']||0;
-  document.getElementById('s-picked').textContent=v.picked||0;
+  document.getElementById('s-packed').textContent=v.picked||0;
   document.getElementById('s-sold').textContent=v.sold||0;
 }
 
