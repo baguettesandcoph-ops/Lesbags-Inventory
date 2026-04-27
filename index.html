@@ -248,7 +248,6 @@ function processScan(raw){
   }
   var p=products[sku];
   if(scanMode==='pick'){
-    if(p.status==='packed'){setResult(p.name+' — already packed','warn');return;}
     p.status='packed';
     setResult(p.name+' — packed and ready','ok');beep();
     scanLog.unshift({time:timeStr,sku:sku,name:p.name,action:'pick'});
